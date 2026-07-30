@@ -1,0 +1,325 @@
+﻿/* ---------------------------------------------------
+   Toolbar
+--------------------------------------------------- */
+.customers-toolbar {
+    margin-bottom: 1.25rem;
+}
+
+.customers-search {
+    max-width: 360px;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.customers-search:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+.customers-search input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    font-size: 0.92rem;
+    padding: 0;
+}
+
+.customers-search input:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+/* ---------------------------------------------------
+   Table
+--------------------------------------------------- */
+.customer-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.customer-avatar {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.contact-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.text-muted {
+    opacity: 0.5;
+    font-style: italic;
+}
+
+.actions-col {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.icon-btn:hover {
+    background: rgba(79, 70, 229, 0.12);
+    color: var(--primary);
+}
+
+.icon-btn.danger:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: #EF4444;
+}
+
+.actions-col .icon-btn+.icon-btn {
+    margin-left: 0.4rem;
+}
+
+/* ---------------------------------------------------
+   Empty state & skeleton loading
+--------------------------------------------------- */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.85rem;
+    padding: 3rem 1rem;
+    text-align: center;
+}
+
+.customers-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+}
+
+.skeleton-row {
+    height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(90deg,
+            var(--surface-color-light) 25%,
+            rgba(255, 255, 255, 0.06) 50%,
+            var(--surface-color-light) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* ---------------------------------------------------
+   Modal (Add / Edit customer)
+--------------------------------------------------- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    animation: overlayIn 180ms ease;
+}
+
+@keyframes overlayIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.modal-panel {
+    width: 100%;
+    max-width: 420px;
+    margin: 1rem;
+    border-radius: 16px;
+    padding: 1.5rem;
+    animation: modalIn 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modalIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.modal-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.modal-form input,
+.modal-form textarea {
+    padding: 0.6rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface-color);
+    color: var(--text-primary);
+    font-size: 0.92rem;
+    font-family: inherit;
+    resize: vertical;
+    transition: border-color 0.2s ease;
+}
+
+.modal-form input:focus,
+.modal-form textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.form-error {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #EF4444;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    margin-top: 0.25rem;
+}
+
+.modal-actions button {
+    padding: 0.6rem 1.25rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.modal-actions button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.spin {
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ---------------------------------------------------
+   Responsive: card-style table on small screens
+--------------------------------------------------- */
+@media (max-width: 720px) {
+    .customers-table thead {
+        display: none;
+    }
+
+    .customers-table,
+    .customers-table tbody,
+    .customers-table tr,
+    .customers-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .customers-table tr {
+        padding: 0.85rem 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .customers-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.3rem 0;
+        border-bottom: none;
+    }
+
+    .customers-table td::before {
+        content: attr(data-label);
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .actions-col {
+        justify-content: flex-end !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .modal-overlay,
+    .modal-panel,
+    .skeleton-row,
+    .spin {
+        animation: none !important;
+    }
+}
+
