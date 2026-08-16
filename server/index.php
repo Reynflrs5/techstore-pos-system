@@ -50,8 +50,8 @@ if (preg_match('#^/api/products/(\d+)/variants$#', $request_uri, $matches)) {
         $oldStock = $stmt->fetchColumn() ?: 0;
         $diff = $data['stock_quantity'] - $oldStock;
 
-        $stmt = $pdo->prepare("UPDATE products SET name = ?, barcode = ?, category_id = ?, price = ?, stock_quantity = ?, image_url = ? WHERE id = ?");
-        $stmt->execute([$data['name'], $data['barcode'], $category_id, $data['price'], $data['stock_quantity'], $data['image_url'], $id]);
+        $stmt = $pdo->prepare("UPDATE products SET name = ?, barcode = ?, category_id = ?, price = ?, stock_quantity = ?, image_url = ?, description = ? WHERE id = ?");
+        $stmt->execute([$data['name'], $data['barcode'], $category_id, $data['price'], $data['stock_quantity'], $data['image_url'], $data['description'] ?? null, $id]);
 
         if ($diff !== 0) {
             $type = $diff > 0 ? 'STOCK_IN' : 'STOCK_OUT';
@@ -64,14 +64,26 @@ if (preg_match('#^/api/products/(\d+)/variants$#', $request_uri, $matches)) {
         echo json_encode($stmt->fetch());
         exit;
     } elseif ($method === 'DELETE') {
-        $stmt = $pdo->prepare("DELETE FROM products WHERE id = ?");
-        $stmt->execute([$id]);
-        echo json_encode(['success' => true]);
+        try {
+            $stmt = $pdo->prepare("DELETE FROM products WHERE id = ?");
+            $stmt->execute([$id]);
+            echo json_encode(['success' => true, 'deleted' => true]);
+        } catch (PDOException $e) {
+            if ($e->getCode() == 23000) { // Foreign key constraint violation
+                // Fallback to archiving the product
+                $stmt = $pdo->prepare("UPDATE products SET is_archived = 1 WHERE id = ?");
+                $stmt->execute([$id]);
+                echo json_encode(['success' => true, 'archived' => true]);
+            } else {
+                http_response_code(500);
+                echo json_encode(['error' => 'Database error while deleting product.']);
+            }
+        }
         exit;
     }
 } elseif ($request_uri === '/api/products') {
     if ($method === 'GET') {
-        $stmt = $pdo->query("SELECT p.*, c.name as category FROM products p LEFT JOIN categories c ON p.category_id = c.id ORDER BY p.name ASC");
+        $stmt = $pdo->query("SELECT p.*, c.name as category FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.is_archived = 0 ORDER BY p.name ASC");
         echo json_encode($stmt->fetchAll());
         exit;
     } elseif ($method === 'POST') {
@@ -81,8 +93,8 @@ if (preg_match('#^/api/products/(\d+)/variants$#', $request_uri, $matches)) {
         $cat = $stmt->fetch();
         $category_id = $cat ? $cat['id'] : null;
 
-        $stmt = $pdo->prepare("INSERT INTO products (name, barcode, category_id, price, stock_quantity, image_url) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$data['name'], $data['barcode'], $category_id, $data['price'], $data['stock_quantity'], $data['image_url']]);
+        $stmt = $pdo->prepare("INSERT INTO products (name, barcode, category_id, price, stock_quantity, image_url, description) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$data['name'], $data['barcode'], $category_id, $data['price'], $data['stock_quantity'], $data['image_url'], $data['description'] ?? null]);
         $id = $pdo->lastInsertId();
 
         if ($data['stock_quantity'] > 0) {

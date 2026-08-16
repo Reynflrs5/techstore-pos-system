@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Package,
   Search,
@@ -19,7 +19,7 @@ import ModalPortal from '../components/ModalPortal';
 const API_URL = 'http://localhost:5000/api/products';
 
 // Empty form used both for "Add Product" and reset after submit.
-const emptyForm = { name: '', barcode: '', category: '', price: '', stock_quantity: '', image_url: '' };
+const emptyForm = { name: '', barcode: '', category: '', price: '', stock_quantity: '', image_url: '', description: '' };
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -34,6 +34,7 @@ const Products = () => {
   const [formData, setFormData] = useState(emptyForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const [productToDelete, setProductToDelete] = useState(null);
 
   const loadProducts = () => {
     setLoading(true);
@@ -50,7 +51,7 @@ const Products = () => {
       .then(res => res.json())
       .then(data => setDbCategories(data))
       .catch(err => console.error(err));
-      
+
     loadProducts();
   }, []);
 
@@ -121,6 +122,7 @@ const Products = () => {
       price: product.price ?? '',
       stock_quantity: product.stock_quantity ?? '',
       image_url: product.image_url || '',
+      description: product.description || '',
     });
     setFormError('');
     setIsModalOpen(true);
@@ -139,8 +141,35 @@ const Products = () => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, image_url: reader.result }));
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 600;
+          const MAX_HEIGHT = 600;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          setFormData((prev) => ({ ...prev, image_url: dataUrl }));
+        };
+        img.src = event.target.result;
       };
       reader.readAsDataURL(file);
     }
@@ -188,21 +217,32 @@ const Products = () => {
     }
   };
 
-  const handleDelete = async (product) => {
-    const confirmed = window.confirm(`Delete "${product.name}"? This can't be undone.`);
-    if (!confirmed) return;
+  const handleDelete = (product) => {
+    setProductToDelete(product);
+  };
 
+  const executeDelete = async () => {
+    if (!productToDelete) return;
     try {
-      const res = await fetch(`${API_URL}/${product.id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Request failed');
-      setProducts((prev) => prev.filter((p) => p.id !== product.id));
+      const res = await fetch(`${API_URL}/${productToDelete.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        throw new Error(errorData?.error || 'Request failed');
+      }
+      setProducts((prev) => prev.filter((p) => p.id !== productToDelete.id));
+      setProductToDelete(null);
     } catch (err) {
-      alert('Could not delete the product. Please try again.');
+      alert(`Could not delete the product: ${err.message}`);
+      setProductToDelete(null);
     }
   };
 
+  const cancelDelete = () => {
+    setProductToDelete(null);
+  };
+
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in relative">
       <div className="page-header">
         <div>
           <h1 className="page-title">Products Management</h1>
@@ -322,148 +362,186 @@ const Products = () => {
 
       {isModalOpen && (
         <ModalPortal>
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal-panel glass-panel product-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>{editingId ? 'Edit Product' : 'Add Product'}</h3>
-              <button className="icon-btn" onClick={closeModal} aria-label="Close">
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="product-landscape-form">
-              {/* Left Column: Image Upload */}
-              <div className="product-form-left">
-                <label className="image-upload-wrapper">
-                  <span className="upload-label">Product Image</span>
-                  <div className="image-upload-box">
-                    {formData.image_url ? (
-                      <div className="uploaded-image-preview">
-                        <img src={formData.image_url} alt="Preview" />
-                        <div className="upload-overlay">
-                          <ImagePlus size={24} />
-                          <span>Change Photo</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="empty-upload-box">
-                        <ImagePlus size={32} className="text-secondary mb-2" />
-                        <span className="text-secondary font-medium">Click to upload</span>
-                        <span className="text-secondary text-xs mt-1">PNG, JPG, JPEG</span>
-                      </div>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden-file-input"
-                    />
-                  </div>
-                </label>
+          <div className="modal-overlay" onClick={closeModal}>
+            <div className="modal-panel glass-panel product-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>{editingId ? 'Edit Product' : 'Add Product'}</h3>
+                <button className="icon-btn" onClick={closeModal} aria-label="Close">
+                  <X size={18} />
+                </button>
               </div>
 
-              {/* Right Column: Form Fields */}
-              <div className="product-form-right">
-                <label>
-                  Name
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => handleFormChange('name', e.target.value)}
-                    placeholder="e.g. Wireless Mouse"
-                    autoFocus
-                  />
-                </label>
+              <form onSubmit={handleSubmit} className="product-landscape-form">
+                {/* Left Column: Image Upload */}
+                <div className="product-form-left">
+                  <label className="image-upload-wrapper">
+                    <span className="upload-label">Product Image</span>
+                    <div className="image-upload-box">
+                      {formData.image_url ? (
+                        <div className="uploaded-image-preview">
+                          <img src={formData.image_url} alt="Preview" />
+                          <div className="upload-overlay">
+                            <ImagePlus size={24} />
+                            <span>Change Photo</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="empty-upload-box">
+                          <ImagePlus size={32} className="text-secondary mb-2" />
+                          <span className="text-secondary font-medium">Click to upload</span>
+                          <span className="text-secondary text-xs mt-1">PNG, JPG, JPEG</span>
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden-file-input"
+                      />
+                    </div>
+                  </label>
+                </div>
 
-                <label>
-                  Barcode
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {/* Right Column: Form Fields */}
+                <div className="product-form-right">
+                  <label>
+                    Name
                     <input
                       type="text"
-                      value={formData.barcode}
-                      onChange={(e) => handleFormChange('barcode', e.target.value)}
-                      placeholder="e.g. 4801234567890"
-                      style={{ flex: 1, width: '100%' }}
+                      value={formData.name}
+                      onChange={(e) => handleFormChange('name', e.target.value)}
+                      placeholder="e.g. Wireless Mouse"
+                      autoFocus
                     />
-                    <button 
-                      type="button" 
-                      className="btn-secondary" 
-                      onClick={generateBarcode}
-                      style={{ padding: '0 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      title="Auto-Generate Barcode"
+                  </label>
+
+                  <label>
+                    Barcode
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input
+                        type="text"
+                        value={formData.barcode}
+                        onChange={(e) => handleFormChange('barcode', e.target.value)}
+                        placeholder="e.g. 4801234567890"
+                        style={{ flex: 1, width: '100%' }}
+                      />
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={generateBarcode}
+                        style={{ padding: '0 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Auto-Generate Barcode"
+                      >
+                        <Barcode size={18} />
+                      </button>
+                    </div>
+                  </label>
+
+                  <label>
+                    Category
+                    <select
+                      value={formData.category}
+                      onChange={(e) => handleFormChange('category', e.target.value)}
+                      style={{ width: '100%', padding: '0.65rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface-color-light)', color: 'var(--text-primary)', marginTop: '0.25rem' }}
                     >
-                      <Barcode size={18} />
+                      <option value="" disabled>Select a Category</option>
+                      {dbCategories.map(c => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
+                      ))}
+                      {/* Fallback for old categories not in DB */}
+                      {Array.from(new Set(products.map(p => p.category).filter(Boolean))).map(cat => {
+                        if (!dbCategories.find(c => c.name === cat)) {
+                          return <option key={cat} value={cat}>{cat}</option>
+                        }
+                        return null;
+                      })}
+                    </select>
+                  </label>
+
+                  <label>
+                    Description
+                    <textarea
+                      value={formData.description}
+                      onChange={(e) => handleFormChange('description', e.target.value)}
+                      placeholder="e.g. Color black, wireless, optical sensor..."
+                      rows={2}
+                      style={{ resize: 'vertical' }}
+                    />
+                  </label>
+
+                  <div className="modal-form-row">
+                    <label>
+                      Price (₱)
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.price}
+                        onChange={(e) => handleFormChange('price', e.target.value)}
+                        placeholder="0.00"
+                      />
+                    </label>
+                    <label>
+                      Stock quantity
+                      <input
+                        type="number"
+                        min="0"
+                        value={formData.stock_quantity}
+                        onChange={(e) => handleFormChange('stock_quantity', e.target.value)}
+                        placeholder="0"
+                      />
+                    </label>
+                  </div>
+
+                  {formError && <p className="form-error">{formError}</p>}
+
+                  <div className="modal-actions mt-auto">
+                    <button type="button" className="btn-secondary" onClick={closeModal} disabled={isSubmitting}>
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn-primary" disabled={isSubmitting}>
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 size={16} className="spin" /> Saving…
+                        </>
+                      ) : editingId ? (
+                        'Save Changes'
+                      ) : (
+                        'Add Product'
+                      )}
                     </button>
                   </div>
-                </label>
-
-                <label>
-                  Category
-                  <select
-                    value={formData.category}
-                    onChange={(e) => handleFormChange('category', e.target.value)}
-                    style={{ width: '100%', padding: '0.65rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--surface-color-light)', color: 'var(--text-primary)', marginTop: '0.25rem' }}
-                  >
-                    <option value="" disabled>Select a Category</option>
-                    {dbCategories.map(c => (
-                      <option key={c.id} value={c.name}>{c.name}</option>
-                    ))}
-                    {/* Fallback for old categories not in DB */}
-                    {Array.from(new Set(products.map(p => p.category).filter(Boolean))).map(cat => {
-                      if (!dbCategories.find(c => c.name === cat)) {
-                        return <option key={cat} value={cat}>{cat}</option>
-                      }
-                      return null;
-                    })}
-                  </select>
-                </label>
-
-                <div className="modal-form-row">
-                  <label>
-                    Price (₱)
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.price}
-                      onChange={(e) => handleFormChange('price', e.target.value)}
-                      placeholder="0.00"
-                    />
-                  </label>
-                  <label>
-                    Stock quantity
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.stock_quantity}
-                      onChange={(e) => handleFormChange('stock_quantity', e.target.value)}
-                      placeholder="0"
-                    />
-                  </label>
                 </div>
-
-                {formError && <p className="form-error">{formError}</p>}
-
-                <div className="modal-actions mt-auto">
-                  <button type="button" className="btn-secondary" onClick={closeModal} disabled={isSubmitting}>
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn-primary" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 size={16} className="spin" /> Saving…
-                      </>
-                    ) : editingId ? (
-                      'Save Changes'
-                    ) : (
-                      'Add Product'
-                    )}
-                  </button>
-                </div>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
-        </div>
+        </ModalPortal>
+      )}
+
+      {productToDelete && (
+        <ModalPortal>
+          <div className="modal-overlay" onClick={cancelDelete}>
+            <div className="modal-panel glass-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+              <div className="modal-header">
+                <h3>Confirm Delete</h3>
+                <button className="icon-btn" onClick={cancelDelete} aria-label="Close">
+                  <X size={18} />
+                </button>
+              </div>
+              <div style={{ padding: '1rem 0' }}>
+                <p>Are you sure you want to delete <strong>{productToDelete.name}</strong>?</p>
+                <p className="text-secondary" style={{ fontSize: '0.9rem', marginTop: '0.5rem' }}>This action cannot be undone.</p>
+              </div>
+              <div className="modal-actions" style={{ marginTop: '1.5rem' }}>
+                <button type="button" className="btn-secondary" onClick={cancelDelete}>
+                  Cancel
+                </button>
+                <button type="button" className="btn-primary" style={{ backgroundColor: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={executeDelete}>
+                  Yes, Delete
+                </button>
+              </div>
+            </div>
+          </div>
         </ModalPortal>
       )}
     </div>

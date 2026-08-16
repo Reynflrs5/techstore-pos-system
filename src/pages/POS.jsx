@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Search, Plus, Minus, Trash2, CreditCard, ShoppingCart, Barcode, Package, X, PauseCircle, Clock, Loader2, User, NotebookPen, ChevronUp, Tag, AlertTriangle, ScanLine, Info, TrendingUp, History, CheckCircle2 } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, CreditCard, ShoppingCart, Barcode, Package, X, PauseCircle, Clock, Loader2, User, NotebookPen, ChevronUp, Tag, AlertTriangle, ScanLine, Info, TrendingUp, History, CheckCircle2, Banknote, Smartphone, SplitSquareHorizontal, AlertCircle, Receipt } from 'lucide-react';
 import './POS.css';
 import ModalPortal from '../components/ModalPortal';
 
@@ -998,7 +998,7 @@ const POS = () => {
           <div className="modal-overlay">
             <div className="modal-panel payment-modal glass-panel">
               <div className="modal-header">
-                <h3>Process Payment</h3>
+                <h3><Receipt size={19} style={{ marginRight: '0.5rem', verticalAlign: '-3px' }} />Process Payment</h3>
                 <button className="icon-btn" onClick={() => setShowPaymentModal(false)}>
                   <X size={18} />
                 </button>
@@ -1065,37 +1065,42 @@ const POS = () => {
 
                 {/* Right Column: Payment Input */}
                 <div className="payment-right-col">
-                  <div className="payment-methods mb-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
+                  <label className="payment-section-label">Payment Method</label>
+                  <div className="payment-methods mb-4">
                     <button
                       className={`pay-method-btn ${paymentMethod === 'Cash' ? 'active' : ''}`}
                       onClick={() => setPaymentMethod('Cash')}
                     >
+                      <span className="pay-method-icon"><Banknote size={20} /></span>
                       Cash
                     </button>
                     <button
                       className={`pay-method-btn ${paymentMethod === 'Card' ? 'active' : ''}`}
                       onClick={() => { setPaymentMethod('Card'); setAmountTendered(total); }}
                     >
+                      <span className="pay-method-icon"><CreditCard size={20} /></span>
                       Card
                     </button>
                     <button
                       className={`pay-method-btn ${paymentMethod === 'GCash' ? 'active' : ''}`}
                       onClick={() => { setPaymentMethod('GCash'); setAmountTendered(total); }}
                     >
+                      <span className="pay-method-icon"><Smartphone size={20} /></span>
                       GCash
                     </button>
                     <button
                       className={`pay-method-btn ${paymentMethod === 'Split' ? 'active' : ''}`}
                       onClick={() => { setPaymentMethod('Split'); }}
                     >
+                      <span className="pay-method-icon"><SplitSquareHorizontal size={20} /></span>
                       Split
                     </button>
                   </div>
 
                   {paymentMethod === 'Cash' && (
                     <div className="cash-calculator mb-4">
-                      <label className="text-secondary" style={{ fontSize: '0.85rem' }}>Amount Tendered</label>
-                      <div className="tendered-input-wrapper">
+                      <label className="payment-section-label">Amount Tendered</label>
+                      <div className={`tendered-input-wrapper ${Number(amountTendered) > 0 && Number(amountTendered) < total ? 'tendered-short' : ''}`}>
                         <span className="currency-symbol">₱</span>
                         <input
                           type="number"
@@ -1113,28 +1118,45 @@ const POS = () => {
                             ₱{val}
                           </button>
                         ))}
-                        <button className="quick-btn" onClick={() => setAmountTendered(Math.ceil(total))}>Exact</button>
+                        <button className="quick-btn quick-btn-exact" onClick={() => setAmountTendered(Math.ceil(total))}>Exact</button>
                       </div>
 
-                      <div className="change-display mt-4">
-                        <div className="flex justify-between items-center w-full">
-                          <span className="text-secondary font-bold">Change Due</span>
-                          <span className={`text-xl font-bold ${changeDue >= 0 ? 'text-success' : 'text-danger'}`}>
-                            ₱{changeDue >= 0 ? changeDue.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
-                          </span>
-                        </div>
+                      <div className={`change-display mt-4 ${amountTendered === '' ? 'change-pending' : changeDue >= 0 ? 'change-ok' : 'change-short'}`}>
+                        {amountTendered === '' ? (
+                          <div className="change-status-row">
+                            <Banknote size={17} />
+                            <span>Enter the amount received from the customer</span>
+                          </div>
+                        ) : changeDue >= 0 ? (
+                          <div className="flex justify-between items-center w-full">
+                            <span className="change-label"><CheckCircle2 size={16} /> Change Due</span>
+                            <span className="change-amount">
+                              ₱{changeDue.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between items-center w-full">
+                            <span className="change-label"><AlertCircle size={16} /> Still Short</span>
+                            <span className="change-amount">
+                              ₱{Math.abs(changeDue).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
 
                   {(paymentMethod === 'GCash' || paymentMethod === 'Card') && (
-                    <div className="mb-4">
-                      <label className="text-secondary" style={{ fontSize: '0.85rem' }}>Reference Number / Approval Code</label>
-                      <div className="tendered-input-wrapper" style={{ marginTop: '0.5rem' }}>
+                    <div className="mb-4 non-cash-panel">
+                      <div className="non-cash-amount-row">
+                        <span className="text-secondary">Amount to charge</span>
+                        <span className="non-cash-amount-value">₱{total.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <label className="payment-section-label">Reference / Approval Code</label>
+                      <div className="tendered-input-wrapper tendered-input-wrapper-text">
                         <input
                           type="text"
-                          className="tendered-input"
-                          style={{ fontSize: '1.1rem', fontWeight: 500 }}
+                          className="tendered-input tendered-input-text"
                           value={referenceNumber}
                           onChange={(e) => setReferenceNumber(e.target.value)}
                           autoFocus
@@ -1146,26 +1168,31 @@ const POS = () => {
 
                   {paymentMethod === 'Split' && (
                     <div className="split-calculator mb-4">
-                      <div className="flex justify-between gap-4">
-                        <div className="flex-1">
-                          <label className="text-secondary" style={{ fontSize: '0.85rem' }}>Cash Amount</label>
-                          <div className="tendered-input-wrapper">
-                            <span className="currency-symbol" style={{ fontSize: '1rem' }}>₱</span>
+                      <div className="split-inputs-row">
+                        <div className="split-input-card">
+                          <label className="payment-section-label"><Banknote size={13} /> Cash</label>
+                          <div className="tendered-input-wrapper split-input-wrapper">
+                            <span className="currency-symbol split-currency-symbol">₱</span>
                             <input
                               type="number"
-                              className="tendered-input"
-                              style={{ fontSize: '1.2rem' }}
+                              className="tendered-input split-tendered-input"
                               value={splitCash}
                               onChange={(e) => setSplitCash(e.target.value)}
                               placeholder="0.00"
                             />
                           </div>
                         </div>
-                        <div className="flex-1">
-                          <label className="text-secondary flex justify-between items-center" style={{ fontSize: '0.85rem' }}>
-                            <span>Non-Cash</span>
+
+                        <span className="split-plus">+</span>
+
+                        <div className="split-input-card">
+                          <label className="payment-section-label split-method-label">
+                            <span className="split-method-label-text">
+                              {splitNonCashMethod === 'GCash' ? <Smartphone size={13} /> : <CreditCard size={13} />}
+                              Non-Cash
+                            </span>
                             <select
-                              className="text-primary bg-transparent border-none outline-none font-bold cursor-pointer"
+                              className="split-method-select"
                               value={splitNonCashMethod}
                               onChange={(e) => setSplitNonCashMethod(e.target.value)}
                             >
@@ -1173,12 +1200,11 @@ const POS = () => {
                               <option value="Card">Card</option>
                             </select>
                           </label>
-                          <div className="tendered-input-wrapper">
-                            <span className="currency-symbol" style={{ fontSize: '1rem' }}>₱</span>
+                          <div className="tendered-input-wrapper split-input-wrapper">
+                            <span className="currency-symbol split-currency-symbol">₱</span>
                             <input
                               type="number"
-                              className="tendered-input"
-                              style={{ fontSize: '1.2rem' }}
+                              className="tendered-input split-tendered-input"
                               value={splitNonCash}
                               onChange={(e) => setSplitNonCash(e.target.value)}
                               placeholder="0.00"
@@ -1188,12 +1214,11 @@ const POS = () => {
                       </div>
 
                       <div className="mt-3">
-                        <label className="text-secondary" style={{ fontSize: '0.85rem' }}>{splitNonCashMethod} Reference Number</label>
-                        <div className="tendered-input-wrapper" style={{ marginTop: '0.25rem' }}>
+                        <label className="payment-section-label">{splitNonCashMethod} Reference Number</label>
+                        <div className="tendered-input-wrapper tendered-input-wrapper-text">
                           <input
                             type="text"
-                            className="tendered-input"
-                            style={{ fontSize: '1rem', fontWeight: 500 }}
+                            className="tendered-input tendered-input-text"
                             value={referenceNumber}
                             onChange={(e) => setReferenceNumber(e.target.value)}
                             placeholder="Reference No."
@@ -1201,27 +1226,37 @@ const POS = () => {
                         </div>
                       </div>
 
-                      <div className="change-display mt-4">
-                        <div className="flex justify-between items-center w-full mb-1">
-                          <span className="text-secondary">Total Tendered</span>
-                          <span className="font-bold">₱{splitTotalEntered.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      <div className={`change-display mt-4 ${splitTotalEntered === 0 ? 'change-pending' : splitChangeDue >= 0 ? 'change-ok' : 'change-short'}`}>
+                        <div className="flex justify-between items-center w-full mb-1 split-tendered-summary">
+                          <span>Total Tendered</span>
+                          <span>₱{splitTotalEntered.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
-                        <div className="flex justify-between items-center w-full">
-                          <span className="text-secondary font-bold">Change Due</span>
-                          <span className={`text-xl font-bold ${splitChangeDue >= 0 ? 'text-success' : 'text-danger'}`}>
-                            ₱{splitChangeDue >= 0 ? splitChangeDue.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
-                          </span>
-                        </div>
+                        {splitTotalEntered === 0 ? (
+                          <div className="change-status-row">
+                            <SplitSquareHorizontal size={17} />
+                            <span>Enter cash and non-cash amounts</span>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between items-center w-full">
+                            <span className="change-label">
+                              {splitChangeDue >= 0 ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                              {splitChangeDue >= 0 ? 'Change Due' : 'Still Short'}
+                            </span>
+                            <span className="change-amount">
+                              ₱{Math.abs(splitChangeDue).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
 
                   <button
-                    className="btn-primary w-full mt-auto"
-                    style={{ padding: '1rem', fontSize: '1.1rem' }}
+                    className="btn-primary w-full checkout-cta"
                     onClick={handleCheckout}
                     disabled={(paymentMethod === 'Cash' && (changeDue < 0 || !amountTendered)) || (paymentMethod === 'Split' && splitChangeDue < 0)}
                   >
+                    <CheckCircle2 size={19} />
                     Confirm & Checkout
                   </button>
                 </div>
